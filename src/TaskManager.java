@@ -12,9 +12,6 @@ public class TaskManager {
     private HashMap<Integer, SubTask> subTasks = new HashMap<>();
     private HashMap<Integer, Epic> epics = new HashMap<>();
 
-    private int generateId() {
-        return incrementId++;
-    }
 
     //получение всех списков (2.а)
     public ArrayList<Task> getAllTasks() {
@@ -36,10 +33,17 @@ public class TaskManager {
 
     public void deleteAllSubTasks() {
         subTasks.clear();
+        for (Epic epic : epics.values()) {
+            if (epic != null) {
+                epic.getSubTaskIds().clear();
+                updateEpicStatus(epic.getId());
+            }
+        }
     }
 
     public void deleteAllEpics() {
         epics.clear();
+        subTasks.clear();
     }
 
     //получение по идентификатору (2.с)
@@ -122,6 +126,21 @@ public class TaskManager {
         }
     }
 
+    //подзадачи эпика
+    public ArrayList<SubTask> getSubtasksByEpicId(int epicId) {
+        ArrayList<SubTask> result = new ArrayList<>();
+        Epic epic = epics.get(epicId);
+        if (epic != null) {
+            for (int subtaskId : epic.getSubTaskIds()) {
+                SubTask subtask = subTasks.get(subtaskId);
+                if (subtask != null) {
+                    result.add(subtask);
+                }
+            }
+        }
+        return result;
+    }
+
     //Обновление статусов
     private void updateEpicStatus(int epicId) {
         Epic epic = epics.get(epicId);
@@ -129,7 +148,7 @@ public class TaskManager {
             ArrayList<Integer> subTaskIds = epic.getSubTaskIds();
             if (subTaskIds.isEmpty()) {
                 epic.setStatus(String.valueOf(Status.NEW));
-                //return;
+                return;
             }
             boolean allSubTasksDone = true;
             boolean allSubTasksNew = true;
@@ -155,18 +174,7 @@ public class TaskManager {
         }
     }
 
-    //подзадачи эпика
-    public ArrayList<SubTask> getSubtasksByEpicId(int epicId) {
-        ArrayList<SubTask> result = new ArrayList<>();
-        Epic epic = epics.get(epicId);
-        if (epic != null) {
-            for (int subtaskId : epic.getSubTaskIds()) {
-                SubTask subtask = subTasks.get(subtaskId);
-                if (subtask != null) {
-                    result.add(subtask);
-                }
-            }
-        }
-        return result;
+    private int generateId() {
+        return incrementId++;
     }
 }

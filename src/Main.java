@@ -24,6 +24,8 @@ public class Main {
                 Status.DONE, epic2.getId());
 
         //taskManager.deleteAllTasks();
+        //taskManager.deleteAllSubTasks();
+        //taskManager.deleteAllEpics();
         //taskManager.deleteSubTaskById(3);
         //taskManager.deleteEpicById(3);
 
