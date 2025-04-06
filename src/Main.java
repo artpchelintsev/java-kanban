@@ -1,9 +1,9 @@
-import Manager.Managers;
-import Manager.TaskManager;
-import Tasks.Epic;
-import Tasks.Status;
-import Tasks.SubTask;
-import Tasks.Task;
+import manager.Managers;
+import manager.TaskManager;
+import tasks.Epic;
+import tasks.Status;
+import tasks.SubTask;
+import tasks.Task;
 
 public class Main {
 
@@ -37,7 +37,7 @@ public class Main {
         //taskManager.deleteSubTaskById(3);
         //taskManager.deleteEpicById(3);
 
-        System.out.println("Tasks");
+        System.out.println("tasks");
         for (Task task : taskManager.getAllTasks()) {
             System.out.println(task);
         }
