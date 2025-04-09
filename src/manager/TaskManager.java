@@ -1,19 +1,19 @@
-package Manager;
+package manager;
 
-import Tasks.Epic;
-import Tasks.Status;
-import Tasks.SubTask;
-import Tasks.Task;
+import tasks.Epic;
+import tasks.Status;
+import tasks.SubTask;
+import tasks.Task;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public interface TaskManager {
     //получение всех списков (2.а)
-    ArrayList<Task> getAllTasks();
+    List<Task> getAllTasks();
 
-    ArrayList<SubTask> getAllSubTasks();
+    List<SubTask> getAllSubTasks();
 
-    ArrayList<Epic> getAllEpics();
+    List<Epic> getAllEpics();
 
     //получение по идентификатору (2.с)
     void getTaskById(int id);
@@ -43,6 +43,6 @@ public interface TaskManager {
 
     void deleteEpicById(int id);
 
-    //Получение истории топ 10.
-    ArrayList<Task> getHistory();
+    //Получение истории.
+    List<Task> getHistory();
 }
