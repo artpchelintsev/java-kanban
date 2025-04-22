@@ -17,7 +17,7 @@ public class FileBackedTaskManagerTest {
     public void testSaveAndLoadEmptyFile() throws IOException {
         File file = Files.createTempFile("test", ".csv").toFile();
         FileBackedTaskManager manager = new FileBackedTaskManager(file);
-        manager.save();
+
         FileBackedTaskManager loadedManager = FileBackedTaskManager.loadFromFile(file);
 
         assertTrue(loadedManager.getAllTasks().isEmpty());

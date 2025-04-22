@@ -30,7 +30,7 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
     public Epic createEpic(String name, String description, Status status) {
         Epic epic = super.createEpic(name, description, status);
         save();
-        return  epic;
+        return epic;
     }
 
     @Override
@@ -94,26 +94,6 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         save();
     }
 
-    public void save() {
-        try {
-            StringBuilder data = new StringBuilder("id,type,name,status,description,epic\n");
-            for (Task task : getAllTasks()) {
-                data.append(taskToString(task)).append("\n");
-            }
-
-            for (Epic epic : getAllEpics()) {
-                data.append(taskToString(epic)).append("\n");
-            }
-
-            for (SubTask subTask : getAllSubTasks()) {
-                data.append(taskToString(subTask)).append("\n");
-            }
-
-            Files.writeString(file.toPath(), data.toString());
-        } catch (IOException e) {
-            throw new ManagerSaveException("Ошибка при сохранении в файл.", e);
-        }
-    }
 
     public static FileBackedTaskManager loadFromFile(File file) {
         FileBackedTaskManager manager = new FileBackedTaskManager(file);
@@ -199,7 +179,26 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         }
     }
 
+    private void save() {
+        try {
+            StringBuilder data = new StringBuilder("id,type,name,status,description,epic\n");
+            for (Task task : getAllTasks()) {
+                data.append(taskToString(task)).append("\n");
+            }
 
+            for (Epic epic : getAllEpics()) {
+                data.append(taskToString(epic)).append("\n");
+            }
+
+            for (SubTask subTask : getAllSubTasks()) {
+                data.append(taskToString(subTask)).append("\n");
+            }
+
+            Files.writeString(file.toPath(), data.toString());
+        } catch (IOException e) {
+            throw new ManagerSaveException("Ошибка при сохранении в файл.", e);
+        }
+    }
 
     private String taskToString(Task task) {
         if (task instanceof SubTask) {
