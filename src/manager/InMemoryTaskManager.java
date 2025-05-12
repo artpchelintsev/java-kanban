@@ -1,13 +1,15 @@
 package manager;
 
+import manager.exceptions.ManagerSaveException;
 import tasks.Epic;
 import tasks.Status;
 import tasks.SubTask;
 import tasks.Task;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class InMemoryTaskManager implements TaskManager {
     int incrementId = 1;
@@ -94,22 +96,29 @@ public class InMemoryTaskManager implements TaskManager {
 
     //Создание (2.d)
     @Override
-    public Task createTask(String name, String description, Status status) {
-        Task task = new Task(generateId(), name, description, status);
+    public Task createTask(String name, String description, Status status, Duration duration, LocalDateTime startTime) {
+        Task task = new Task(generateId(), name, description, status, duration, startTime);
+        if (hasTimeConflict(task)) {
+            throw new ManagerSaveException("Задача пересекается по времени с существующей");
+        }
         tasks.put(task.getId(), task);
+        if (task.getStartTime() != null) {
+            prioritizedTasks.add(task);
+        }
         return task;
     }
 
     @Override
-    public Epic createEpic(String name, String description, Status status) {
-        Epic epic = new Epic(generateId(), name, description, status.toString());
+    public Epic createEpic(String name, String description, Status status, Duration duration, LocalDateTime startTime) {
+        Epic epic = new Epic(generateId(), name, description, status.toString(), duration, startTime);
         epics.put(epic.getId(), epic);
         return epic;
     }
 
     @Override
-    public SubTask createSubTask(String name, String description, Status status, int epicId) {
-        SubTask subTask = new SubTask(generateId(), name, description, status, epicId);
+    public SubTask createSubTask(String name, String description, Status status, int epicId,
+                                 Duration duration, LocalDateTime startTime) {
+        SubTask subTask = new SubTask(generateId(), name, description, status, epicId, duration, startTime);
         subTasks.put(subTask.getId(), subTask);
 
         Epic epic = epics.get(epicId);
@@ -226,7 +235,47 @@ public class InMemoryTaskManager implements TaskManager {
         }
     }
 
+    @Override
+    public List<Task> getPrioritizedTasks() {
+        return new ArrayList<>(prioritizedTasks);
+    }
+
+    @Override
+    public boolean hasTimeConflict(Task newTask) {
+        if (newTask.getStartTime() == null || newTask.getDuration() == null) {
+            return false;
+        }
+
+        LocalDateTime newStart = newTask.getStartTime();
+        LocalDateTime newEnd = newTask.getEndTime();
+
+        return prioritizedTasks.stream()
+                .filter(task -> task.getId() != newTask.getId())
+                .filter(task -> task.getStartTime() != null)
+                .anyMatch(existingTask -> {
+                    LocalDateTime existingStart = existingTask.getStartTime();
+                    LocalDateTime existingEnd = existingTask.getEndTime();
+                    return !(newEnd.isBefore(existingStart) || newStart.isAfter(existingEnd));
+                });
+    }
+
     private int generateId() {
         return incrementId++;
     }
+
+    private boolean isTimeOverlapping(Task task1, Task task2) {
+        LocalDateTime start1 = task1.getStartTime();
+        LocalDateTime end1 = task1.getEndTime();
+        LocalDateTime start2 = task2.getStartTime();
+        LocalDateTime end2 = task2.getEndTime();
+
+        return !(end1.isBefore(start2) || end2.isBefore(start1));
+    }
+
+    final TreeSet<Task> prioritizedTasks = new TreeSet<>(
+            Comparator.comparing(
+                    Task::getStartTime,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            )
+    );
 }
