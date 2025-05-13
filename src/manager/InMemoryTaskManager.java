@@ -16,6 +16,12 @@ public class InMemoryTaskManager implements TaskManager {
     final HashMap<Integer, SubTask> subTasks = new HashMap<>();
     final HashMap<Integer, Epic> epics = new HashMap<>();
     private final HistoryManager historyManager = Managers.getDefaultHistory();
+    final TreeSet<Task> prioritizedTasks = new TreeSet<>(
+            Comparator.comparing(
+                    Task::getStartTime,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            )
+    );
 
 
     //получение всех списков (2.а)
@@ -271,10 +277,5 @@ public class InMemoryTaskManager implements TaskManager {
         return !(end1.isBefore(start2) || end2.isBefore(start1));
     }
 
-    final TreeSet<Task> prioritizedTasks = new TreeSet<>(
-            Comparator.comparing(
-                    Task::getStartTime,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            )
-    );
+
 }
