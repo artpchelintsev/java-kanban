@@ -9,6 +9,8 @@ import manager.exceptions.ManagerSaveException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,22 +22,25 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
     }
 
     @Override
-    public Task createTask(String name, String description, Status status) {
-        Task task = super.createTask(name, description, status);
+    public Task createTask(String name, String description, Status status,
+                           Duration duration, LocalDateTime startTime) {
+        Task task = super.createTask(name, description, status, duration, startTime);
         save();
         return task;
     }
 
     @Override
-    public Epic createEpic(String name, String description, Status status) {
-        Epic epic = super.createEpic(name, description, status);
+    public Epic createEpic(String name, String description, Status status,
+                           Duration duration, LocalDateTime startTime) {
+        Epic epic = super.createEpic(name, description, status, duration, startTime);
         save();
         return epic;
     }
 
     @Override
-    public SubTask createSubTask(String name, String description, Status status, int epicId) {
-        SubTask subTask = super.createSubTask(name, description, status, epicId);
+    public SubTask createSubTask(String name, String description, Status status, int epicId,
+                                 Duration duration, LocalDateTime startTime) {
+        SubTask subTask = super.createSubTask(name, description, status, epicId, duration, startTime);
         save();
         return subTask;
     }
@@ -145,7 +150,18 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
                 manager.updateEpicStatus(epic.getId());
             }
         } catch (IOException e) {
-            throw new ManagerSaveException("Ошибка при загрузке из файла.", e);
+            throw new ManagerSaveException("Ошибка при загрузке из файла.");
+        }
+
+        for (Task task : manager.getAllTasks()) {
+            if (task.getStartTime() != null) {
+                manager.prioritizedTasks.add(task);
+            }
+        }
+        for (SubTask subTask : manager.getAllSubTasks()) {
+            if (subTask.getStartTime() != null) {
+                manager.prioritizedTasks.add(subTask);
+            }
         }
         return manager;
     }
@@ -164,16 +180,28 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
 
         switch (type) {
             case "TASK":
-                return new Task(id, name, description, status);
+                Duration taskDuration = parts.length > 6 && !parts[6].isEmpty() ?
+                        Duration.ofMinutes(Long.parseLong(parts[6])) : null;
+                LocalDateTime taskStart = parts.length > 7 && !parts[7].isEmpty() ?
+                        LocalDateTime.parse(parts[7]) : null;
+                return new Task(id, name, description, status, taskDuration, taskStart);
             case "EPIC":
-                Epic epic = new Epic(id, name, description, status.toString());
-                return epic;
+                Duration epicDuration = parts.length > 6 && !parts[6].isEmpty() ?
+                        Duration.ofMinutes(Long.parseLong(parts[6])) : null;
+                LocalDateTime epicStart = parts.length > 7 && !parts[7].isEmpty() ?
+                        LocalDateTime.parse(parts[7]) : null;
+                return new Epic(id, name, description, status.toString(), epicDuration, epicStart);
+
             case "SUBTASK":
                 if (parts.length < 6) {
                     return null;
                 }
                 int epicId = Integer.parseInt(parts[5]);
-                return new SubTask(id, name, description, status, epicId);
+                Duration subDuration = parts.length > 6 && !parts[6].isEmpty() ?
+                        Duration.ofMinutes(Long.parseLong(parts[6])) : null;
+                LocalDateTime subStart = parts.length > 7 && !parts[7].isEmpty() ?
+                        LocalDateTime.parse(parts[7]) : null;
+                return new SubTask(id, name, description, status, epicId, subDuration, subStart);
             default:
                 return null;
         }
@@ -196,31 +224,40 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
 
             Files.writeString(file.toPath(), data.toString());
         } catch (IOException e) {
-            throw new ManagerSaveException("Ошибка при сохранении в файл.", e);
+            throw new ManagerSaveException("Ошибка при сохранении в файл.");
         }
     }
 
     private String taskToString(Task task) {
+        String durationString = task.getDuration() != null ?
+                String.valueOf(task.getDuration().toMinutes()) : "";
+        String startTimeString = task.getStartTime() != null ?
+                task.getStartTime().toString() : "";
+
         if (task instanceof SubTask) {
             SubTask subTask = (SubTask) task;
-            return String.format("%d,SUBTASK,%s,%s,%s,%d",
+            return String.format("%d,SUBTASK,%s,%s,%s,%d,%s,%s",
                     subTask.getId(),
                     subTask.getName(),
                     subTask.getStatus(),
                     subTask.getDescription(),
-                    subTask.getEpicId());
+                    subTask.getEpicId(),
+                    durationString,
+                    startTimeString);
         } else if (task instanceof Epic) {
-            return String.format("%d,EPIC,%s,%s,%s,",
+            return String.format("%d,EPIC,%s,%s,%s,,,",
                     task.getId(),
                     task.getName(),
                     task.getStatus(),
                     task.getDescription());
         } else {
-            return String.format("%d,TASK,%s,%s,%s,",
+            return String.format("%d,TASK,%s,%s,%s,,%s,%s",
                     task.getId(),
                     task.getName(),
                     task.getStatus(),
-                    task.getDescription());
+                    task.getDescription(),
+                    durationString,
+                    startTimeString);
         }
     }
 }

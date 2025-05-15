@@ -1,37 +1,72 @@
-import manager.Managers;
 import manager.TaskManager;
+import manager.exceptions.ManagerSaveException;
 import tasks.Epic;
 import tasks.Status;
 import tasks.SubTask;
 import tasks.Task;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TaskManagerTest {
+public abstract class TaskManagerTest<T extends TaskManager> {
+    protected T manager;
+    private final LocalDateTime testStartTime = LocalDateTime.of(2023, 1, 1, 10, 0);
+    private final Duration testDuration = Duration.ofHours(1);
+
+
     @Test
-    public void testTaskEquality() {
-        Task task1 = new Task(1, "Task1", "Description1", Status.NEW);
-        Task task2 = new Task(1, "Task2", "Description2", Status.DONE);
-        assertEquals(task1, task2, "Задачи с одинаковым id должны быть равны.");
+    void testTaskTimeConflict() {
+        manager.createTask("Task1", "Desc", Status.NEW,
+                Duration.ofHours(2), LocalDateTime.of(2023, 1, 1, 10, 0));
+
+        assertThrows(ManagerSaveException.class, () -> {
+            manager.createTask("Task2", "Desc", Status.NEW,
+                    Duration.ofHours(1), LocalDateTime.of(2023, 1, 1, 11, 0));
+        });
     }
 
     @Test
-    public void testHistoryManager() {
-        TaskManager manager = Managers.getDefault();
-        Task task = manager.createTask("Task", "Description", Status.NEW);
+    void testPrioritizedTasks() {
+        Task task1 = manager.createTask("Task1", "Desc", Status.NEW,
+                Duration.ofHours(1), LocalDateTime.of(2023, 1, 1, 12, 0));
+        Task task2 = manager.createTask("Task2", "Desc", Status.NEW,
+                Duration.ofHours(1), LocalDateTime.of(2023, 1, 1, 10, 0));
+
+        List<Task> prioritized = manager.getPrioritizedTasks();
+        assertEquals(2, prioritized.size());
+        assertEquals(task2, prioritized.get(0));
+        assertEquals(task1, prioritized.get(1));
+    }
+
+    @Test
+    void testTasksWithoutTimeNotInPrioritizedList() {
+        Task taskWithTime = manager.createTask("Task1", "Desc", Status.NEW,
+                Duration.ofHours(1), LocalDateTime.of(2023, 1, 1, 12, 0));
+        Task taskWithoutTime = manager.createTask("Task2", "Desc", Status.NEW, null, null);
+
+        List<Task> prioritized = manager.getPrioritizedTasks();
+        assertEquals(1, prioritized.size());
+        assertTrue(prioritized.contains(taskWithTime));
+        assertFalse(prioritized.contains(taskWithoutTime));
+    }
+
+    @Test
+    void testHistoryManager() {
+        Task task = manager.createTask("Task", "Description", Status.NEW, testDuration, testStartTime);
         manager.getTaskById(task.getId());
         assertEquals(1, manager.getHistory().size(),
                 "История должна содержать одну задачу");
     }
 
     @Test
-    public void testRemoveSubtaskFromEpic() {
-        TaskManager manager = Managers.getDefault();
-        Epic epic = manager.createEpic("Epic1", "Description1", Status.NEW);
-        SubTask subTask = manager.createSubTask("Subtask1", "Description1", Status.NEW, epic.getId());
+    void testRemoveSubtaskFromEpic() {
+        Epic epic = manager.createEpic("Epic1", "Description1", Status.NEW, null, null);
+        SubTask subTask = manager.createSubTask("Subtask1", "Description1", Status.NEW, epic.getId(),
+                Duration.ofMinutes(30), LocalDateTime.now());
 
         manager.deleteSubTaskById(subTask.getId());
 
@@ -40,9 +75,8 @@ public class TaskManagerTest {
     }
 
     @Test
-    public void testHistoryHasNoDuplicates() {
-        TaskManager manager = Managers.getDefault();
-        Task task = manager.createTask("Task", "Description", Status.NEW);
+    void testHistoryHasNoDuplicates() {
+        Task task = manager.createTask("Task", "Description", Status.NEW, testDuration, testStartTime);
 
         manager.getTaskById(task.getId());
         manager.getTaskById(task.getId());
@@ -52,30 +86,27 @@ public class TaskManagerTest {
         List<Task> history = manager.getHistory();
 
         assertEquals(1, history.size(), "История должна содержать лишь одну задачу.");
-        assertEquals(task, history.getFirst(), "Задача должна быть уникальной.");
+        assertEquals(task, history.get(0), "Задача должна быть уникальной.");
     }
 
     @Test
-    public void testTaskRemovalFromHistory() {
-        TaskManager manager = Managers.getDefault();
-        Task task = manager.createTask("Task", "Description", Status.NEW);
+    void testTaskRemovalFromHistory() {
+        Task task = manager.createTask("Task", "Description", Status.NEW, testDuration, testStartTime);
 
         manager.getTaskById(task.getId());
-
         manager.deleteTaskById(task.getId());
 
         assertTrue(manager.getHistory().isEmpty(), "История должна быть пустой после удаления задачи");
     }
 
     @Test
-    public void testEpicWithSubtasksRemoval() {
-        TaskManager manager = Managers.getDefault();
-        Epic epic = manager.createEpic("Epic", "Description", Status.NEW);
-        SubTask subTask = manager.createSubTask("Subtask", "Description", Status.NEW, epic.getId());
+    void testEpicWithSubtasksRemoval() {
+        Epic epic = manager.createEpic("Epic", "Description", Status.NEW, null, null);
+        SubTask subTask = manager.createSubTask("Subtask", "Description", Status.NEW, epic.getId(),
+                Duration.ofMinutes(30), LocalDateTime.now());
 
         manager.getEpicById(epic.getId());
         manager.getSubTaskById(subTask.getId());
-
         manager.deleteEpicById(epic.getId());
 
         assertTrue(manager.getHistory().isEmpty(), "История должна быть пустой после удаления эпика");
@@ -83,11 +114,13 @@ public class TaskManagerTest {
     }
 
     @Test
-    public void testHistoryOrder() {
-        TaskManager manager = Managers.getDefault();
-        Task task1 = manager.createTask("Task1", "Description1", Status.NEW);
-        Task task2 = manager.createTask("Task2", "Description2", Status.NEW);
-        Task task3 = manager.createTask("Task3", "Description3", Status.NEW);
+    void testHistoryOrder() {
+        Task task1 = manager.createTask("Task1", "Description1", Status.NEW,
+                Duration.ofMinutes(30), LocalDateTime.of(2023, 1, 1, 10, 0));
+        Task task2 = manager.createTask("Task2", "Description2", Status.NEW,
+                Duration.ofMinutes(30), LocalDateTime.of(2023, 1, 1, 11, 0));
+        Task task3 = manager.createTask("Task3", "Description3", Status.NEW,
+                Duration.ofMinutes(30), LocalDateTime.of(2023, 1, 1, 12, 0));
 
         manager.getTaskById(task2.getId());
         manager.getTaskById(task1.getId());
@@ -101,4 +134,32 @@ public class TaskManagerTest {
         assertEquals(task3, history.get(2), "Третья задача в истории должна быть task3");
     }
 
+    @Test
+    void testEpicStatusCalculation() {
+
+        Epic epicNew = manager.createEpic("EpicNew", "Desc", Status.NEW, null, null);
+        SubTask subNew = manager.createSubTask("SubNew", "Desc", Status.NEW, epicNew.getId(),
+                testDuration, testStartTime);
+        assertEquals(Status.NEW, epicNew.getStatus());
+
+
+        Epic epicDone = manager.createEpic("EpicDone", "Desc", Status.NEW, null, null);
+        SubTask subDone = manager.createSubTask("SubDone", "Desc", Status.DONE, epicDone.getId(),
+                testDuration, testStartTime);
+        assertEquals(Status.DONE, epicDone.getStatus());
+
+
+        Epic epicMixed = manager.createEpic("EpicMixed", "Desc", Status.NEW, null, null);
+        SubTask subMixed1 = manager.createSubTask("SubMixed1", "Desc", Status.NEW, epicMixed.getId(),
+                testDuration, testStartTime);
+        SubTask subMixed2 = manager.createSubTask("SubMixed2", "Desc", Status.DONE, epicMixed.getId(),
+                testDuration, testStartTime.plusHours(1));
+        assertEquals(Status.IN_PROGRESS, epicMixed.getStatus());
+
+
+        Epic epicInProgress = manager.createEpic("EpicInProgress", "Desc", Status.NEW, null, null);
+        SubTask subInProgress = manager.createSubTask("SubInProgress", "Desc", Status.IN_PROGRESS,
+                epicInProgress.getId(), testDuration, testStartTime);
+        assertEquals(Status.IN_PROGRESS, epicInProgress.getStatus());
+    }
 }

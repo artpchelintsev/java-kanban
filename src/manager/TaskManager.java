@@ -5,6 +5,8 @@ import tasks.Status;
 import tasks.SubTask;
 import tasks.Task;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TaskManager {
@@ -23,11 +25,12 @@ public interface TaskManager {
     Epic getEpicById(int id);
 
     //creation (2.d)
-    Task createTask(String name, String description, Status status);
+    Task createTask(String name, String description, Status status, Duration duration, LocalDateTime startTime);
 
-    Epic createEpic(String name, String description, Status status);
+    Epic createEpic(String name, String description, Status status, Duration duration, LocalDateTime startTime);
 
-    SubTask createSubTask(String name, String description, Status status, int epicId);
+    SubTask createSubTask(String name, String description, Status status, int epicId,
+                          Duration duration, LocalDateTime startTime);
 
     //Обновление (2.e)
     void updateTask(Task task);
@@ -45,4 +48,10 @@ public interface TaskManager {
 
     //Получение истории.
     List<Task> getHistory();
+
+    //Получение отсортированного списка
+    List<Task> getPrioritizedTasks();
+
+    //Проверка пересечений
+    boolean hasTimeConflict(Task task);
 }
