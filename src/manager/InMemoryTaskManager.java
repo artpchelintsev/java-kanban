@@ -74,11 +74,12 @@ public class InMemoryTaskManager implements TaskManager {
 
     //Получение по идентификатору (2.с)
     @Override
-    public void getTaskById(int id) {
+    public Task getTaskById(int id) {
         Task task = tasks.get(id);
         if (task != null) {
             historyManager.add(task);
         }
+        return task;
     }
 
     @Override
