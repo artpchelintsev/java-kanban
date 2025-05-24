@@ -18,7 +18,7 @@ public interface TaskManager {
     List<Epic> getAllEpics();
 
     //получение по идентификатору (2.с)
-    void getTaskById(int id);
+    Task getTaskById(int id);
 
     SubTask getSubTaskById(int id);
 
@@ -54,4 +54,10 @@ public interface TaskManager {
 
     //Проверка пересечений
     boolean hasTimeConflict(Task task);
+
+    void deleteAllTasks();
+
+    void deleteAllSubTasks();
+
+    void deleteAllEpics();
 }
